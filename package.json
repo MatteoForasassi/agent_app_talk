@@ -1,0 +1,15 @@
+{
+  "name": "websocket-relay-server",
+  "version": "1.0.0",
+  "description": "WebSocket relay server for Unity and Web App communication",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.14.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
