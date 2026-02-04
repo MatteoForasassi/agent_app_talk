@@ -1,5 +1,6 @@
 <script>
-// ========== CONFIGURATION ==========
+  document.addEventListener('DOMContentLoaded', () => {
+    // ========== CONFIGURATION ==========
     const ADMIN_PASSWORD = 'admin123'; // Change this!
     const RELAY_SERVER_URL = 'wss://agent-app-talk.onrender.com';
 
@@ -223,18 +224,18 @@
             </div>
             <div class="queue-item-actions">
               <div class="move-controls">
-                <button class="move-btn" onclick="moveUp(${index})" ${index === 0 ? 'disabled' : ''}>
+                <button class="move-btn" onclick="window.moveUp(${index})" ${index === 0 ? 'disabled' : ''}>
                   ▲
                 </button>
-                <button class="move-btn" onclick="moveDown(${index})" ${index === waitingQueue.length - 1 ? 'disabled' : ''}>
+                <button class="move-btn" onclick="window.moveDown(${index})" ${index === waitingQueue.length - 1 ? 'disabled' : ''}>
                   ▼
                 </button>
               </div>
-              <button class="btn btn-primary btn-small" onclick="promoteUser(${index})">
+              <button class="btn btn-primary btn-small" onclick="window.promoteUser(${index})">
                 <span>⬆️</span>
                 <span>Promuovi</span>
               </button>
-              <button class="btn btn-danger btn-small" onclick="removeFromQueue(${index})">
+              <button class="btn btn-danger btn-small" onclick="window.removeFromQueue(${index})">
                 <span>❌</span>
                 <span>Rimuovi</span>
               </button>
@@ -245,7 +246,7 @@
     }
 
     // ========== ADMIN ACTIONS ==========
-    function closeConversation() {
+    window.closeConversation = function() {
       if (confirm('Vuoi chiudere questa conversazione?')) {
         sendAdminCommand('close_conversation', {
           userId: activeUser.userId
@@ -253,7 +254,7 @@
       }
     }
 
-    function demoteToQueue() {
+    window.demoteToQueue = function() {
       if (confirm('Vuoi mettere questo utente in coda?')) {
         sendAdminCommand('demote_to_queue', {
           userId: activeUser.userId
@@ -261,13 +262,13 @@
       }
     }
 
-    function promoteUser(index) {
+    window.promoteUser = function(index) {
       sendAdminCommand('promote_user', {
         index: index
       });
     }
 
-    function removeFromQueue(index) {
+    window.removeFromQueue = function(index) {
       if (confirm('Vuoi rimuovere questo utente dalla coda?')) {
         sendAdminCommand('remove_from_queue', {
           index: index
@@ -275,7 +276,7 @@
       }
     }
 
-    function moveUp(index) {
+    window.moveUp = function(index) {
       if (index > 0) {
         sendAdminCommand('move_in_queue', {
           fromIndex: index,
@@ -284,7 +285,7 @@
       }
     }
 
-    function moveDown(index) {
+    window.moveDown = function(index) {
       if (index < waitingQueue.length - 1) {
         sendAdminCommand('move_in_queue', {
           fromIndex: index,
@@ -338,6 +339,5 @@
         connectedTimeEl.textContent = `${minutes}m ${seconds}s`;
       }
     }, 1000);
-      </script>
-</body>
-</html>
+  });
+</script>
