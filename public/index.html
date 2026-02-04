@@ -13,7 +13,7 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #1a2332 0%, #2d4a5c 100%);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -34,8 +34,8 @@
 
     #landingPage h1 {
       font-size: 48px;
-      color: white;
-      text-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      color: #00d9ff;
+      text-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
       margin-bottom: 20px;
     }
 
@@ -56,26 +56,34 @@
     .username-input input {
       padding: 16px 24px;
       font-size: 18px;
-      border: none;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(0, 217, 255, 0.3);
+      color: white;
       border-radius: 12px;
       outline: none;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+    }
+
+    .username-input input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
     }
 
     .username-input input:focus {
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+      border-color: #00d9ff;
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 0 20px rgba(0, 217, 255, 0.3);
     }
 
     #connectBtn {
       padding: 20px 50px;
       font-size: 24px;
       font-weight: 700;
-      background: white;
-      color: #667eea;
+      background: linear-gradient(135deg, #00d9ff 0%, #00a8cc 100%);
+      color: white;
       border: none;
       border-radius: 50px;
       cursor: pointer;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 0 30px rgba(0, 217, 255, 0.5);
       transition: all 0.3s ease;
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -83,15 +91,15 @@
 
     #connectBtn:hover:not(:disabled) {
       transform: translateY(-5px);
-      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
-      background: #f0f0f0;
+      box-shadow: 0 0 40px rgba(0, 217, 255, 0.8);
     }
 
     #connectBtn:disabled {
-      background: #ccc;
-      color: #888;
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.3);
       cursor: not-allowed;
       transform: none;
+      box-shadow: none;
     }
 
     /* ========== MAIN APP (HIDDEN INITIALLY) ========== */
@@ -118,20 +126,25 @@
     .header h1 {
       font-size: 28px;
       margin-bottom: 8px;
+      color: #00d9ff;
+      text-shadow: 0 0 15px rgba(0, 217, 255, 0.5);
     }
 
     .user-info {
       font-size: 14px;
       opacity: 0.9;
       margin-top: 8px;
+      color: rgba(255, 255, 255, 0.8);
     }
 
     /* ========== AVATAR STATUS CARD ========== */
     .avatar-status-card {
-      background: white;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 217, 255, 0.2);
       border-radius: 16px;
       padding: 24px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
       text-align: center;
     }
 
@@ -145,45 +158,53 @@
 
     .avatar-icon {
       font-size: 48px;
+      filter: drop-shadow(0 0 10px rgba(0, 217, 255, 0.5));
     }
 
     .avatar-state {
       font-size: 18px;
       font-weight: 600;
+      color: white;
     }
 
     .avatar-state.idle {
-      color: #10b981;
+      color: #00ff88;
+      text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
     }
 
     .avatar-state.busy {
-      color: #ef4444;
+      color: #ff4444;
+      text-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
     }
 
     .queue-info {
       padding: 12px;
-      background: #fef3c7;
+      background: rgba(255, 193, 7, 0.1);
+      border: 1px solid rgba(255, 193, 7, 0.3);
       border-radius: 8px;
       margin-top: 12px;
       font-size: 14px;
-      color: #92400e;
+      color: #ffc107;
     }
 
     .active-user-info {
       padding: 12px;
-      background: #dbeafe;
+      background: rgba(0, 217, 255, 0.1);
+      border: 1px solid rgba(0, 217, 255, 0.3);
       border-radius: 8px;
       margin-top: 12px;
       font-size: 14px;
-      color: #1e40af;
+      color: #00d9ff;
     }
 
     /* ========== CONTROLS ========== */
     .controls {
-      background: white;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 217, 255, 0.2);
       border-radius: 16px;
       padding: 24px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
     }
 
     .control-section {
@@ -196,7 +217,7 @@
 
     .control-section h3 {
       font-size: 14px;
-      color: #6b7280;
+      color: rgba(0, 217, 255, 0.8);
       margin-bottom: 12px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -225,61 +246,68 @@
     }
 
     button:disabled {
-      background: #d1d5db;
-      color: #9ca3af;
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.3);
       cursor: not-allowed;
+      box-shadow: none;
     }
 
     .btn-primary {
-      background: #10b981;
+      background: linear-gradient(135deg, #00d9ff 0%, #00a8cc 100%);
       color: white;
+      box-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: #059669;
+      box-shadow: 0 0 30px rgba(0, 217, 255, 0.6);
+      transform: translateY(-2px);
     }
 
     .btn-danger {
-      background: #ef4444;
+      background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
       color: white;
+      box-shadow: 0 0 20px rgba(255, 68, 68, 0.4);
     }
 
     .btn-danger:hover:not(:disabled) {
-      background: #dc2626;
+      box-shadow: 0 0 30px rgba(255, 68, 68, 0.6);
+      transform: translateY(-2px);
     }
 
     .btn-warning {
-      background: #f59e0b;
+      background: linear-gradient(135deg, #ffc107 0%, #ff9800 100%);
       color: white;
+      box-shadow: 0 0 20px rgba(255, 193, 7, 0.4);
     }
 
     .btn-warning:hover:not(:disabled) {
-      background: #d97706;
+      box-shadow: 0 0 30px rgba(255, 193, 7, 0.6);
+      transform: translateY(-2px);
     }
 
     .btn-secondary {
-      background: #6b7280;
+      background: rgba(255, 255, 255, 0.1);
       color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     .btn-secondary:hover:not(:disabled) {
-      background: #4b5563;
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
     }
 
     .btn-recording {
-      background: #dc2626;
+      background: linear-gradient(135deg, #ff0055 0%, #cc0044 100%);
       color: white;
       animation: pulse-recording 1.5s infinite;
     }
 
     @keyframes pulse-recording {
       0%, 100% {
-        opacity: 1;
-        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+        box-shadow: 0 0 20px rgba(255, 0, 85, 0.6);
       }
       50% {
-        opacity: 0.9;
-        box-shadow: 0 0 0 10px rgba(220, 38, 38, 0);
+        box-shadow: 0 0 40px rgba(255, 0, 85, 1);
       }
     }
 
@@ -290,39 +318,47 @@
       font-weight: 500;
       font-size: 14px;
       margin-top: 16px;
+      border: 1px solid;
     }
 
     .status.idle {
-      background: #f3f4f6;
-      color: #6b7280;
+      background: rgba(255, 255, 255, 0.05);
+      color: rgba(255, 255, 255, 0.6);
+      border-color: rgba(255, 255, 255, 0.1);
     }
 
     .status.connecting {
-      background: #fef3c7;
-      color: #92400e;
+      background: rgba(255, 193, 7, 0.1);
+      color: #ffc107;
+      border-color: rgba(255, 193, 7, 0.3);
     }
 
     .status.active {
-      background: #dcfce7;
-      color: #166534;
+      background: rgba(0, 255, 136, 0.1);
+      color: #00ff88;
+      border-color: rgba(0, 255, 136, 0.3);
     }
 
     .status.waiting {
-      background: #fef3c7;
-      color: #92400e;
+      background: rgba(255, 193, 7, 0.1);
+      color: #ffc107;
+      border-color: rgba(255, 193, 7, 0.3);
     }
 
     .status.error {
-      background: #fee2e2;
-      color: #991b1b;
+      background: rgba(255, 68, 68, 0.1);
+      color: #ff4444;
+      border-color: rgba(255, 68, 68, 0.3);
     }
 
     /* ========== TRANSCRIPT ========== */
     .transcript-container {
-      background: white;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(0, 217, 255, 0.2);
       border-radius: 16px;
       padding: 24px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
       flex: 1;
       display: flex;
       flex-direction: column;
@@ -335,51 +371,71 @@
       align-items: center;
       margin-bottom: 16px;
       padding-bottom: 12px;
-      border-bottom: 2px solid #f3f4f6;
+      border-bottom: 1px solid rgba(0, 217, 255, 0.2);
     }
 
     .transcript-header h2 {
       font-size: 18px;
-      color: #1f2937;
+      color: #00d9ff;
     }
 
     #clearBtn {
       padding: 8px 16px;
       font-size: 14px;
-      background: #f3f4f6;
-      color: #6b7280;
-      border: none;
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s;
     }
 
     #clearBtn:hover {
-      background: #e5e7eb;
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
     }
 
     .transcript-content {
       flex: 1;
       overflow-y: auto;
       padding: 12px;
-      background: #f9fafb;
+      background: rgba(0, 0, 0, 0.2);
       border-radius: 8px;
       font-size: 16px;
       line-height: 1.6;
-      color: #374151;
+      color: rgba(255, 255, 255, 0.9);
       white-space: pre-wrap;
       word-wrap: break-word;
     }
 
     .transcript-content:empty::before {
       content: "La trascrizione apparirà qui...";
-      color: #9ca3af;
+      color: rgba(255, 255, 255, 0.4);
       font-style: italic;
     }
 
     .interim {
-      color: #9ca3af;
+      color: rgba(0, 217, 255, 0.6);
       font-style: italic;
+    }
+
+    /* ========== SCROLLBAR STYLING ========== */
+    .transcript-content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .transcript-content::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+    }
+
+    .transcript-content::-webkit-scrollbar-thumb {
+      background: rgba(0, 217, 255, 0.3);
+      border-radius: 4px;
+    }
+
+    .transcript-content::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 217, 255, 0.5);
     }
 
     @media (max-width: 480px) {
@@ -972,55 +1028,4 @@
       } else if (error.name === 'NotFoundError') {
         errorMessage = 'Nessun microfono trovato';
       } else if (error.name === 'NotReadableError') {
-        errorMessage = 'Microfono già in uso da un\'altra applicazione';
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      updateStatus(errorMessage, 'error');
-      stopRecording();
-    }
-
-    function handleDisconnection() {
-      stopRecording();
-      updateStatus('Disconnesso dal server', 'error');
-      
-      setTimeout(() => {
-        returnToLanding();
-      }, 2000);
-    }
-
-    function returnToLanding() {
-      mainApp.classList.remove('active');
-      landingPage.style.display = 'flex';
-      
-      // Reset state
-      userState = 'disconnected';
-      conversationActive = false;
-      isRecording = false;
-      userId = null;
-      queuePosition = null;
-      finalTranscript = '';
-      interimTranscript = '';
-      
-      // Reset UI
-      usernameInput.value = '';
-      connectBtn.disabled = true;
-      updateStatus('Disconnesso', 'idle');
-    }
-
-    // ========== CLEANUP ==========
-    window.addEventListener('beforeunload', () => {
-      stopRecording();
-      if (relaySocket && relaySocket.readyState === WebSocket.OPEN) {
-        relaySocket.close();
-      }
-    });
-
-    // ========== NOTIFICATIONS ==========
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-  </script>
-</body>
-</html>
+        errorMessage = 'Microfono già
