@@ -1,13 +1,22 @@
 const WebSocket = require('ws');
-const http = require('http');
+const express = require('express');
+const path = require('path');
 
 const PORT = process.env.PORT || 8080;
 
-// Create HTTP server
-const server = http.createServer((req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end('WebSocket Relay Server Running\n');
+// Create Express app
+const app = express();
+
+// Serve static files from 'public' folder
+app.use(express.static('public'));
+
+// Serve index.html at root
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
+
+// Create HTTP server with Express
+const server = require('http').createServer(app);
 
 // Create WebSocket server
 const wss = new WebSocket.Server({ server });
@@ -105,5 +114,5 @@ function broadcastToWeb(data) {
 
 server.listen(PORT, () => {
   console.log(`WebSocket Relay Server running on port ${PORT}`);
-  console.log(`ws://localhost:${PORT}`);
+  console.log(`Server ready at http://localhost:${PORT}`);
 });
