@@ -25,6 +25,7 @@ const wss = new WebSocket.Server({ server });
 let activeUser = null; // { ws, userId, username, startTime }
 const waitingQueue = []; // [{ ws, userId, username, joinTime }]
 const unityClients = new Set();
+const adminClients = new Set(); // NEW: Admin clients
 let avatarState = 'idle'; // 'idle' | 'busy'
 let userIdCounter = 0;
 
@@ -62,6 +63,15 @@ wss.on('connection', (ws, req) => {
           handleLeaveQueue(ws);
           break;
 
+        // ========== ADMIN MESSAGES ==========
+        case 'admin_get_state':
+          handleAdminGetState(ws);
+          break;
+
+        case 'admin_command':
+          handleAdminCommand(ws, data);
+          break;
+
         default:
           console.log('Unknown message type:', data.type);
       }
@@ -86,7 +96,18 @@ wss.on('connection', (ws, req) => {
     if (clientType === 'unity') {
       // Unity client
       unityClients.add(ws);
+      ws.clientType = 'unity';
       console.log('✅ Unity client connected. Total Unity clients:', unityClients.size);
+      broadcastAdminStateUpdate();
+
+    } else if (clientType === 'admin') {
+      // Admin client
+      adminClients.add(ws);
+      ws.clientType = 'admin';
+      console.log('✅ Admin client connected. Total Admin clients:', adminClients.size);
+      
+      // Send current state immediately
+      sendAdminStateUpdate(ws);
 
     } else if (clientType === 'web') {
       // Web client
@@ -145,6 +166,9 @@ wss.on('connection', (ws, req) => {
 
     // Update queue positions for waiting users
     broadcastQueueUpdate();
+
+    // Notify admins
+    broadcastAdminStateUpdate();
   }
 
   // ========== ADD TO QUEUE ==========
@@ -184,6 +208,9 @@ wss.on('connection', (ws, req) => {
       waiting: waitingQueue.length,
       timestamp: new Date().toISOString()
     });
+
+    // Notify admins
+    broadcastAdminStateUpdate();
   }
 
   // ========== START CONVERSATION ==========
@@ -262,6 +289,54 @@ wss.on('connection', (ws, req) => {
         waiting: waitingQueue.length,
         timestamp: new Date().toISOString()
       });
+
+      // Notify admins
+      broadcastAdminStateUpdate();
+    }
+  }
+
+  // ========== ADMIN GET STATE ==========
+  function handleAdminGetState(ws) {
+    if (ws.clientType !== 'admin') {
+      console.log('❌ Unauthorized admin_get_state from non-admin client');
+      return;
+    }
+
+    sendAdminStateUpdate(ws);
+  }
+
+  // ========== ADMIN COMMAND ==========
+  function handleAdminCommand(ws, data) {
+    if (ws.clientType !== 'admin') {
+      console.log('❌ Unauthorized admin_command from non-admin client');
+      return;
+    }
+
+    console.log(`🔧 Admin command: ${data.action}`, data);
+
+    switch (data.action) {
+      case 'close_conversation':
+        adminCloseConversation(data.userId);
+        break;
+
+      case 'demote_to_queue':
+        adminDemoteToQueue(data.userId);
+        break;
+
+      case 'promote_user':
+        adminPromoteUser(data.index);
+        break;
+
+      case 'remove_from_queue':
+        adminRemoveFromQueue(data.index);
+        break;
+
+      case 'move_in_queue':
+        adminMoveInQueue(data.fromIndex, data.toIndex);
+        break;
+
+      default:
+        console.log('Unknown admin action:', data.action);
     }
   }
 
@@ -271,6 +346,12 @@ wss.on('connection', (ws, req) => {
       // Unity disconnected
       unityClients.delete(ws);
       console.log('❌ Unity client disconnected. Total Unity clients:', unityClients.size);
+      broadcastAdminStateUpdate();
+
+    } else if (ws.clientType === 'admin') {
+      // Admin disconnected
+      adminClients.delete(ws);
+      console.log('❌ Admin client disconnected. Total Admin clients:', adminClients.size);
 
     } else if (ws.clientType === 'web') {
       // Web client disconnected
@@ -289,11 +370,156 @@ wss.on('connection', (ws, req) => {
           waitingQueue.splice(index, 1);
           console.log('Removed from queue');
           broadcastQueueUpdate();
+          broadcastAdminStateUpdate();
         }
       }
     }
   }
 });
+
+// ========== ADMIN ACTIONS ==========
+
+function adminCloseConversation(userId) {
+  if (!activeUser || activeUser.userId !== userId) {
+    console.log('❌ No active user to close or userId mismatch');
+    return;
+  }
+
+  console.log(`🔧 Admin closing conversation for: ${activeUser.username}`);
+
+  // Notify user they were kicked
+  sendToClient(activeUser.ws, {
+    type: 'kicked_out',
+    reason: 'La tua conversazione è stata chiusa dall\'amministratore'
+  });
+
+  // Close the connection
+  activeUser.ws.close();
+
+  releaseControl();
+  promoteNextUser();
+}
+
+function adminDemoteToQueue(userId) {
+  if (!activeUser || activeUser.userId !== userId) {
+    console.log('❌ No active user to demote or userId mismatch');
+    return;
+  }
+
+  console.log(`🔧 Admin demoting to queue: ${activeUser.username}`);
+
+  const demotedUser = activeUser;
+
+  // Release control
+  releaseControl();
+
+  // Add to front of queue
+  waitingQueue.unshift({
+    ws: demotedUser.ws,
+    userId: demotedUser.userId,
+    username: demotedUser.username,
+    joinTime: new Date()
+  });
+
+  // Notify demoted user
+  sendToClient(demotedUser.ws, {
+    type: 'registered',
+    userId: demotedUser.userId,
+    state: 'waiting',
+    queuePosition: 1
+  });
+
+  // Update queue
+  broadcastQueueUpdate();
+
+  // Promote next user (if any after the demoted one)
+  promoteNextUser();
+}
+
+function adminPromoteUser(index) {
+  if (index < 0 || index >= waitingQueue.length) {
+    console.log('❌ Invalid queue index:', index);
+    return;
+  }
+
+  console.log(`🔧 Admin promoting user at index ${index}`);
+
+  // If there's an active user, demote them first
+  if (activeUser) {
+    const demotedUser = activeUser;
+    
+    // Release control
+    releaseControl();
+
+    // Add demoted user to front of queue
+    waitingQueue.unshift({
+      ws: demotedUser.ws,
+      userId: demotedUser.userId,
+      username: demotedUser.username,
+      joinTime: new Date()
+    });
+
+    // Notify demoted user
+    sendToClient(demotedUser.ws, {
+      type: 'registered',
+      userId: demotedUser.userId,
+      state: 'waiting',
+      queuePosition: 1
+    });
+
+    // Adjust index because we added to front
+    index++;
+  }
+
+  // Get user to promote
+  const userToPromote = waitingQueue.splice(index, 1)[0];
+
+  // Promote them
+  promoteToActive(userToPromote.ws);
+}
+
+function adminRemoveFromQueue(index) {
+  if (index < 0 || index >= waitingQueue.length) {
+    console.log('❌ Invalid queue index:', index);
+    return;
+  }
+
+  const removedUser = waitingQueue.splice(index, 1)[0];
+  console.log(`🔧 Admin removed from queue: ${removedUser.username}`);
+
+  // Notify removed user
+  sendToClient(removedUser.ws, {
+    type: 'kicked_out',
+    reason: 'Sei stato rimosso dalla coda dall\'amministratore'
+  });
+
+  // Close connection
+  removedUser.ws.close();
+
+  // Update queue
+  broadcastQueueUpdate();
+  broadcastAdminStateUpdate();
+}
+
+function adminMoveInQueue(fromIndex, toIndex) {
+  if (fromIndex < 0 || fromIndex >= waitingQueue.length ||
+      toIndex < 0 || toIndex >= waitingQueue.length) {
+    console.log('❌ Invalid queue indices:', fromIndex, toIndex);
+    return;
+  }
+
+  console.log(`🔧 Admin moving user from ${fromIndex} to ${toIndex}`);
+
+  // Remove from old position
+  const [user] = waitingQueue.splice(fromIndex, 1);
+
+  // Insert at new position
+  waitingQueue.splice(toIndex, 0, user);
+
+  // Update queue
+  broadcastQueueUpdate();
+  broadcastAdminStateUpdate();
+}
 
 // ========== RELEASE CONTROL ==========
 function releaseControl() {
@@ -309,6 +535,9 @@ function releaseControl() {
     type: 'user_left',
     timestamp: new Date().toISOString()
   });
+
+  // Notify admins
+  broadcastAdminStateUpdate();
 }
 
 // ========== PROMOTE NEXT USER ==========
@@ -344,6 +573,9 @@ function promoteNextUser() {
     // Update queue positions
     broadcastQueueUpdate();
 
+    // Notify admins
+    broadcastAdminStateUpdate();
+
   } else {
     console.log('📭 No users waiting - avatar returning to idle');
     avatarState = 'idle';
@@ -353,6 +585,9 @@ function promoteNextUser() {
       type: 'avatar_idle',
       timestamp: new Date().toISOString()
     });
+
+    // Notify admins
+    broadcastAdminStateUpdate();
   }
 }
 
@@ -401,11 +636,45 @@ function broadcastToUnity(data) {
   console.log('📤 Sent to Unity:', data.type);
 }
 
+// ========== ADMIN STATE UPDATE ==========
+function sendAdminStateUpdate(adminWs) {
+  const stateData = {
+    type: 'admin_state_update',
+    activeUser: activeUser ? {
+      userId: activeUser.userId,
+      username: activeUser.username,
+      startTime: activeUser.startTime.toISOString()
+    } : null,
+    waitingQueue: waitingQueue.map(entry => ({
+      userId: entry.userId,
+      username: entry.username,
+      joinTime: entry.joinTime.toISOString()
+    })),
+    avatarState: avatarState,
+    unityClients: unityClients.size
+  };
+
+  if (adminWs.readyState === WebSocket.OPEN) {
+    try {
+      adminWs.send(JSON.stringify(stateData));
+    } catch (error) {
+      console.error('Error sending to admin:', error);
+    }
+  }
+}
+
+function broadcastAdminStateUpdate() {
+  adminClients.forEach(admin => {
+    sendAdminStateUpdate(admin);
+  });
+}
+
 // ========== START SERVER ==========
 server.listen(PORT, () => {
   console.log('═══════════════════════════════════════════════════════');
   console.log(`🚀 WebSocket Relay Server running on port ${PORT}`);
   console.log('📋 Queue-based conversation management enabled');
   console.log('🤖 Single active user mode with waiting queue');
+  console.log('🔧 Admin panel enabled at /admin.html');
   console.log('═══════════════════════════════════════════════════════');
 });
