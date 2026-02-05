@@ -228,11 +228,12 @@ wss.on('connection', (ws, req) => {
       type: 'conversation_started'
     });
 
-    // Notify Unity
+    // Notify Unity with newSession flag
     broadcastToUnity({
       type: 'conversation_started',
       userId: ws.userId,
       username: ws.username,
+      newSession: true,
       timestamp: new Date().toISOString()
     });
   }
