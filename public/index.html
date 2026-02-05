@@ -283,6 +283,15 @@
       }
     }
 
+    /* Hold to record button specific styles */
+    #holdRecBtn {
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      touch-action: none;
+    }
+
     .status {
       padding: 12px 16px;
       border-radius: 8px;
@@ -476,17 +485,13 @@
         </div>
       </div>
 
-      <!-- Recording Control -->
+      <!-- Recording Control - HOLD TO RECORD -->
       <div class="control-section">
         <h3>Registrazione</h3>
         <div class="button-group">
-          <button id="startRecBtn" class="btn-primary" disabled>
+          <button id="holdRecBtn" class="btn-primary" disabled>
             <span>🎤</span>
-            <span>Avvia Registrazione</span>
-          </button>
-          <button id="stopRecBtn" class="btn-danger" disabled>
-            <span>⏹</span>
-            <span>Ferma Registrazione</span>
+            <span>Tieni Premuto per Registrare</span>
           </button>
         </div>
       </div>
@@ -518,15 +523,13 @@
   <script>
     // ========== CONFIGURATION ==========
     const DEEPGRAM_API_KEY = '87ce09f5219486e115182b4252e98370723dda2b';
-    const DEEPGRAM_URL = 'wss://api.deepgram.com/v1/listen?encoding=linear16&sample_rate=16000&channels=1&language=it&interim_results=true';
     const RELAY_SERVER_URL = 'wss://agent-app-talk.onrender.com';
 
     // ========== STATE ==========
     let relaySocket = null;
-    let deepgramSocket = null;
     let audioStream = null;
-    let audioContext = null;
-    let processor = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
 
     let userState = 'disconnected'; // 'disconnected' | 'waiting' | 'active'
     let conversationActive = false;
@@ -536,7 +539,6 @@
     let queuePosition = null;
 
     let finalTranscript = '';
-    let interimTranscript = '';
 
     // ========== DOM ELEMENTS ==========
     const landingPage = document.getElementById('landingPage');
@@ -554,8 +556,7 @@
     
     const startConvBtn = document.getElementById('startConvBtn');
     const endConvBtn = document.getElementById('endConvBtn');
-    const startRecBtn = document.getElementById('startRecBtn');
-    const stopRecBtn = document.getElementById('stopRecBtn');
+    const holdRecBtn = document.getElementById('holdRecBtn');
     const leaveQueueBtn = document.getElementById('leaveQueueBtn');
     const queueControlSection = document.getElementById('queueControlSection');
     
@@ -723,8 +724,8 @@
       conversationActive = true;
       startConvBtn.disabled = true;
       endConvBtn.disabled = false;
-      startRecBtn.disabled = false;
-      updateStatus('Conversazione attiva - Puoi registrare', 'active');
+      holdRecBtn.disabled = false;
+      updateStatus('Conversazione attiva - Tieni premuto per registrare', 'active');
     }
 
     function handleKickedOut(message) {
@@ -764,8 +765,7 @@
         conversationActive = false;
         startConvBtn.disabled = false;
         endConvBtn.disabled = true;
-        startRecBtn.disabled = true;
-        stopRecBtn.disabled = true;
+        holdRecBtn.disabled = true;
         
         updateStatus('Conversazione terminata', 'idle');
         
@@ -779,18 +779,53 @@
       }
     });
 
-    // ========== RECORDING CONTROL ==========
-    startRecBtn.addEventListener('click', async () => {
-      await startRecording();
+    // ========== HOLD TO RECORD ==========
+    // Mouse events
+    holdRecBtn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      if (!holdRecBtn.disabled) {
+        startRecording();
+      }
     });
 
-    stopRecBtn.addEventListener('click', () => {
-      stopRecording();
+    holdRecBtn.addEventListener('mouseup', (e) => {
+      e.preventDefault();
+      if (isRecording) {
+        stopRecording();
+      }
     });
 
+    holdRecBtn.addEventListener('mouseleave', (e) => {
+      if (isRecording) {
+        stopRecording();
+      }
+    });
+
+    // Touch events for mobile
+    holdRecBtn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      if (!holdRecBtn.disabled) {
+        startRecording();
+      }
+    });
+
+    holdRecBtn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      if (isRecording) {
+        stopRecording();
+      }
+    });
+
+    holdRecBtn.addEventListener('touchcancel', (e) => {
+      if (isRecording) {
+        stopRecording();
+      }
+    });
+
+    // ========== RECORDING ==========
     async function startRecording() {
       try {
-        updateStatus('Richiesta accesso al microfono...', 'connecting');
+        updateStatus('🔴 Registrazione in corso...', 'active');
         
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           throw new Error('Il tuo browser non supporta l\'accesso al microfono');
@@ -804,118 +839,78 @@
           } 
         });
 
-        updateStatus('Connessione a Deepgram...', 'connecting');
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(audioStream);
 
-        deepgramSocket = new WebSocket(DEEPGRAM_URL, ['token', DEEPGRAM_API_KEY]);
-
-        deepgramSocket.onopen = () => {
-          updateStatus('🔴 Registrazione in corso...', 'active');
-          isRecording = true;
-          startRecBtn.disabled = true;
-          stopRecBtn.disabled = false;
-          stopRecBtn.classList.add('btn-recording');
-          setupAudioProcessing();
-        };
-
-        deepgramSocket.onmessage = (message) => {
-          const data = JSON.parse(message.data);
-          
-          if (data.type === 'Results') {
-            const transcript = data.channel.alternatives[0].transcript;
-            
-            if (transcript && transcript.trim() !== '') {
-              if (data.is_final) {
-                finalTranscript += transcript + ' ';
-                interimTranscript = '';
-                sendTranscriptionToServer(transcript, true);
-              } else {
-                interimTranscript = transcript;
-                sendTranscriptionToServer(transcript, false);
-              }
-              updateTranscript();
-            }
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
           }
         };
 
-        deepgramSocket.onerror = (error) => {
-          console.error('Deepgram WebSocket error:', error);
-          updateStatus('Errore di connessione Deepgram', 'error');
-          stopRecording();
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          await sendToDeepgram(audioBlob);
+          
+          if (audioStream) {
+            audioStream.getTracks().forEach(track => track.stop());
+            audioStream = null;
+          }
         };
 
-        deepgramSocket.onclose = () => {
-          console.log('Deepgram connection closed');
-        };
-
+        mediaRecorder.start();
+        isRecording = true;
+        holdRecBtn.classList.add('btn-recording');
+        
       } catch (error) {
         handleError(error);
       }
     }
 
     function stopRecording() {
-      if (deepgramSocket) {
-        if (deepgramSocket.readyState === WebSocket.OPEN) {
-          deepgramSocket.close();
-        }
-        deepgramSocket = null;
-      }
-
-      if (processor) {
-        processor.disconnect();
-        processor = null;
-      }
-
-      if (audioContext) {
-        audioContext.close();
-        audioContext = null;
-      }
-
-      if (audioStream) {
-        audioStream.getTracks().forEach(track => track.stop());
-        audioStream = null;
-      }
-
-      isRecording = false;
-      interimTranscript = '';
-      updateTranscript();
-
-      startRecBtn.disabled = false;
-      stopRecBtn.disabled = true;
-      stopRecBtn.classList.remove('btn-recording');
-      
-      if (conversationActive) {
-        updateStatus('Conversazione attiva - Puoi registrare', 'active');
+      if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
+        holdRecBtn.classList.remove('btn-recording');
+        updateStatus('Elaborazione audio...', 'connecting');
       }
     }
 
-    function setupAudioProcessing() {
+    // ========== SEND TO DEEPGRAM ==========
+    async function sendToDeepgram(audioBlob) {
       try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-        const source = audioContext.createMediaStreamSource(audioStream);
-        
-        processor = audioContext.createScriptProcessor(4096, 1, 1);
-        
-        processor.onaudioprocess = (e) => {
-          if (deepgramSocket && deepgramSocket.readyState === WebSocket.OPEN) {
-            const inputData = e.inputBuffer.getChannelData(0);
-            
-            const int16Data = new Int16Array(inputData.length);
-            for (let i = 0; i < inputData.length; i++) {
-              const s = Math.max(-1, Math.min(1, inputData[i]));
-              int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-            }
-            
-            deepgramSocket.send(int16Data.buffer);
-          }
-        };
-        
-        source.connect(processor);
-        processor.connect(audioContext.destination);
-        
+        const response = await fetch('https://api.deepgram.com/v1/listen?language=it&punctuate=true&model=nova-2', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Token ${DEEPGRAM_API_KEY}`,
+            'Content-Type': 'audio/webm'
+          },
+          body: audioBlob
+        });
+
+        if (!response.ok) {
+          throw new Error(`Deepgram error: ${response.status}`);
+        }
+
+        const result = await response.json();
+        const transcript = result.results?.channels[0]?.alternatives[0]?.transcript || '';
+
+        if (transcript.trim()) {
+          finalTranscript += transcript + ' ';
+          updateTranscript();
+          sendTranscriptionToServer(transcript, true);
+        }
+
+        updateStatus('Conversazione attiva - Tieni premuto per registrare', 'active');
+
       } catch (error) {
-        console.error('Error setting up audio processing:', error);
-        updateStatus('Errore configurazione audio: ' + error.message, 'error');
-        stopRecording();
+        console.error('Deepgram error:', error);
+        updateStatus('Errore trascrizione: ' + error.message, 'error');
+        setTimeout(() => {
+          if (conversationActive) {
+            updateStatus('Conversazione attiva - Tieni premuto per registrare', 'active');
+          }
+        }, 3000);
       }
     }
 
@@ -945,14 +940,12 @@
 
     // ========== TRANSCRIPT ==========
     function updateTranscript() {
-      transcriptDiv.innerHTML = finalTranscript + 
-        (interimTranscript ? `<span class="interim">${interimTranscript}</span>` : '');
+      transcriptDiv.textContent = finalTranscript;
       transcriptDiv.scrollTop = transcriptDiv.scrollHeight;
     }
 
     clearBtn.addEventListener('click', () => {
       finalTranscript = '';
-      interimTranscript = '';
       updateTranscript();
     });
 
@@ -978,7 +971,8 @@
       }
       
       updateStatus(errorMessage, 'error');
-      stopRecording();
+      isRecording = false;
+      holdRecBtn.classList.remove('btn-recording');
     }
 
     function handleDisconnection() {
@@ -1001,7 +995,6 @@
       userId = null;
       queuePosition = null;
       finalTranscript = '';
-      interimTranscript = '';
       
       // Reset UI
       usernameInput.value = '';
@@ -1011,7 +1004,9 @@
 
     // ========== CLEANUP ==========
     window.addEventListener('beforeunload', () => {
-      stopRecording();
+      if (isRecording) {
+        stopRecording();
+      }
       if (relaySocket && relaySocket.readyState === WebSocket.OPEN) {
         relaySocket.close();
       }
